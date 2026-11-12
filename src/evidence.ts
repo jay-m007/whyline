@@ -176,7 +176,11 @@ export function gather(o: GatherOptions, q: Question): Evidence {
   const best = Math.max(0, ...changes.map((c) => c.informative));
   let confidence: Confidence, because: string;
   if (!changes.length) { confidence = "thin"; because = "git has no history for these lines"; }
-  else if (best >= 2) { confidence = "clear"; because = `${changes.filter((c) => c.informative >= 2).length} of ${changes.length} commit messages explain a reason, not just a change`; }
+  else if (best >= 2) {
+    const n = changes.filter((c) => c.informative >= 2).length;
+    confidence = "clear";
+    because = `${n} of ${changes.length} commit ${changes.length === 1 ? "message explains" : n === 1 ? "messages explains" : "messages explain"} a reason, not just a change`;
+  }
   else if (best === 1 || issues.length || signals.some((s) => s.kind === "revert" || s.kind === "reapplied")) { confidence = "partial"; because = issues.length ? "the commits point at issues whyline cannot read" : "the commit messages say what changed but not why"; }
   else { confidence = "thin"; because = `every commit message here is generic (${changes.map((c) => `"${c.commit.subject.slice(0, 20)}"`).slice(0, 3).join(", ")})`; }
 

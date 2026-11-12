@@ -22,9 +22,12 @@ export async function startFake(): Promise<Fake> {
     if (typeof next === "number") { setTimeout(() => send({}), next); return; }
     send(next);
   });
+  server.keepAliveTimeout = 1;
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", r));
   fake.host = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-  fake.close = () => new Promise((r) => server.close(() => r()));
+  // Node's fetch keeps connections alive, and server.close() waits for them, so they are closed
+  // explicitly or a test file hangs after its last request.
+  fake.close = () => new Promise((r) => { server.closeAllConnections?.(); server.close(() => r()); });
   return fake as Fake;
 }
 

@@ -118,7 +118,7 @@ that it gets commits and nothing else.
 ## Development
 
 ```
-npm test          # 48 tests, no network and no model needed
+npm test          # 49 tests, no network and no model needed
 npm run typecheck
 npm run eval      # needs Ollama; builds repositories with known stories and scores the model
 ```

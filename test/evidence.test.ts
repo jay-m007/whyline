@@ -91,7 +91,7 @@ test("confidence is clear when a message gives a reason", () => {
     .commit({ files: { "a.ts": "y\n" }, message: "Pin the version because 4.2 broke the build on node 20" });
   const e = repo.look("a.ts", 1);
   assert.equal(e.confidence, "clear");
-  assert.match(e.because, /explain a reason/);
+  assert.match(e.because, /explains? a reason/);
 });
 
 test("confidence is thin when every message is generic, and it quotes them", () => {
@@ -165,4 +165,13 @@ test("trailers such as Signed-off-by do not count as an explanation", () => {
     .commit({ files: { "a.ts": "y\n" }, message: "fix\n\nSigned-off-by: Someone <s@x.com>\nReviewed-by: Other <o@x.com>" });
   const e = repo.look("a.ts", 1);
   assert.notEqual(e.confidence, "clear");
+});
+
+test("the confidence sentence is grammatical for one commit and for many", () => {
+  const one = newRepo().commit({ files: { "a.ts": "x\n" }, message: "Add the flag because the default breaks on Windows" });
+  assert.match(one.look("a.ts", 1).because, /1 of 1 commit message explains a reason/);
+  const many = newRepo()
+    .commit({ files: { "a.ts": "x\n" }, message: "Add the flag because the default breaks on Windows" })
+    .commit({ files: { "a.ts": "y\n" }, message: "Flip it because the Windows bug was fixed upstream" });
+  assert.match(many.look("a.ts", 1).because, /2 of 2 commit messages explain a reason/);
 });
