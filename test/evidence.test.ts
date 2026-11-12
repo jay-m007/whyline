@@ -175,3 +175,34 @@ test("the confidence sentence is grammatical for one commit and for many", () =>
     .commit({ files: { "a.ts": "y\n" }, message: "Flip it because the Windows bug was fixed upstream" });
   assert.match(many.look("a.ts", 1).because, /2 of 2 commit messages explain a reason/);
 });
+
+test("a specific message that still only says what changed is not treated as an explanation", () => {
+  const repo = newRepo()
+    .commit({ files: { "a.js": "x\n" }, message: "init" })
+    .commit({ files: { "a.js": "y\n" }, message: "Improve performance (#83)" })
+    .commit({ files: { "a.js": "z\n" }, message: "Allow changing concurrency limit (#79)" });
+  const e = repo.look("a.js", 1);
+  assert.equal(e.confidence, "partial", "a message naming an issue is a pointer, not a reason");
+  assert.match(e.because, /what changed/);
+});
+
+test("explanatory language is what makes a history clear", () => {
+  const repo = newRepo()
+    .commit({ files: { "a.js": "x\n" }, message: "init" })
+    .commit({ files: { "a.js": "y\n" }, message: "Queue the calls because the upstream rate-limits above 10 a second" });
+  assert.equal(repo.look("a.js", 1).confidence, "clear");
+});
+
+test("a real paragraph counts even without the word because", () => {
+  const repo = newRepo()
+    .commit({ files: { "a.js": "x\n" }, message: "init" })
+    .commit({ files: { "a.js": "y\n" }, message: "Queue the calls\n\nThe upstream service starts returning 429 above roughly ten requests a second, and the retry loop then made it worse rather than better." });
+  assert.equal(repo.look("a.js", 1).confidence, "clear");
+});
+
+test("a trailer-only body does not count as a paragraph", () => {
+  const repo = newRepo()
+    .commit({ files: { "a.js": "x\n" }, message: "init" })
+    .commit({ files: { "a.js": "y\n" }, message: "Tweak the queue\n\nSigned-off-by: Someone <s@example.com>\nReviewed-by: Another Person <a@example.com>\nCc: A Third <t@example.com>" });
+  assert.notEqual(repo.look("a.js", 1).confidence, "clear");
+});

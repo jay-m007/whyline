@@ -54,15 +54,34 @@ export interface Evidence {
 
 const GENERIC = /^(wip|fix(es|ed)?|update[sd]?|changes?|minor|cleanup|clean ?up|stuff|temp|tmp|misc|refactor|tweak|oops|typo|revert|more|again|final|test|asdf|\.+|[a-f0-9]+)\.?$/i;
 
-/** How much a commit message actually explains, from 0 to 3. */
+/** Message text with trailers removed: Signed-off-by and friends explain nothing. */
+function meaningfulBody(c: Commit): string {
+  return c.body.split("\n")
+    .filter((l) => !/^(Signed-off-by|Co-authored-by|Change-Id|Reviewed-by|Acked-by|Tested-by|Cc|Fixes|Closes|Resolves|Refs|See):/i.test(l.trim()))
+    .join("\n").trim();
+}
+
+/** Words that mark an actual reason rather than a restatement of the change. */
+const REASON = /\b(because|since|so that|in order to|to (avoid|stop|prevent|handle|work ?around|keep|make sure)|otherwise|due to|caused by|regression|workaround|turns out|the problem is|root cause|as a result of|broke|breaks)\b/i;
+
+/**
+ * How much a commit message explains, from 0 to 3.
+ *
+ * The distinction that matters is between a message saying what changed and one saying why. "Improve
+ * performance (#83)" is specific, references an issue and is long enough to look substantial, and it
+ * explains nothing: the reason is in the issue, which whyline cannot read. So length and an issue
+ * reference are worth one point between them, and only explanatory language or a real body can take
+ * a message to the level where whyline claims the history explains the code.
+ */
 export function informativeness(c: Commit): number {
-  let score = 0;
   const subject = c.subject.trim();
-  if (subject.length >= 20 && !GENERIC.test(subject)) score++;
-  if (/\b(because|so that|to (avoid|stop|prevent|handle|fix|work ?around)|otherwise|due to|caused by|regression|workaround)\b/i.test(subject + " " + c.body)) score += 2;
-  else if (c.body.length > 40) score++;
-  if (/#\d+|[A-Z]{2,}-\d+/.test(subject + " " + c.body)) score++;
-  return Math.min(3, score);
+  const body = meaningfulBody(c);
+  const all = subject + "\n" + body;
+  if (REASON.test(all)) return 3;
+  if (body.length > 60) return 2;                                      // a paragraph someone bothered to write
+  if (subject.length >= 20 && !GENERIC.test(subject)) return 1;        // specific, but only about what
+  if (/#\d+|[A-Z]{2,}-\d+/.test(all)) return 1;                        // points somewhere else for the reason
+  return 0;
 }
 
 export function issueRefs(c: Commit): number[] {
@@ -181,7 +200,12 @@ export function gather(o: GatherOptions, q: Question): Evidence {
     confidence = "clear";
     because = `${n} of ${changes.length} commit ${changes.length === 1 ? "message explains" : n === 1 ? "messages explains" : "messages explain"} a reason, not just a change`;
   }
-  else if (best === 1 || issues.length || signals.some((s) => s.kind === "revert" || s.kind === "reapplied")) { confidence = "partial"; because = issues.length ? "the commits point at issues whyline cannot read" : "the commit messages say what changed but not why"; }
+  else if (best === 1 || issues.length || signals.some((s) => s.kind === "revert" || s.kind === "reapplied")) {
+    confidence = "partial";
+    because = best === 1 && issues.length
+      ? "the commit messages say what changed, not why, and point at issues whyline cannot read"
+      : issues.length ? "the commits point at issues whyline cannot read" : "the commit messages say what changed but not why";
+  }
   else { confidence = "thin"; because = `every commit message here is generic (${changes.map((c) => `"${c.commit.subject.slice(0, 20)}"`).slice(0, 3).join(", ")})`; }
 
   return {

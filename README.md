@@ -75,9 +75,14 @@ why src/auth.ts:142 --no-model     just the evidence, no model at all
 3. **The strongest signal is a change that came back.** Someone adds a guard, someone else removes it
    as unnecessary, then it goes back in. That pattern means the simple version was tried and failed,
    and whyline calls it out explicitly.
-4. **The history is scored before the model sees it.** A message is informative if it says *why* —
-   "because", "otherwise", "to avoid", a regression, an issue number — rather than just what changed.
-   Messages like `wip`, `fix`, `update` score zero, and trailers like `Signed-off-by` are stripped.
+4. **The history is scored before the model sees it,** and the bar is deliberately high. A message
+   only counts as explaining something if it uses explanatory language — "because", "so that", "to
+   avoid", "otherwise", "regression", "broke" — or carries a real paragraph of body text. Being
+   specific is not enough: `Improve performance (#83)` is specific, references an issue and looks
+   substantial, and it explains nothing, because the reason is in the issue. That scores one point,
+   not three, and a file whose history is all messages like it is reported as *partly* explained with
+   the reason given. `wip`, `fix` and `update` score zero, and trailers like `Signed-off-by` are
+   stripped before scoring.
 5. **The model is asked only if there is something to read.** If every message is generic, whyline
    does not call the model at all: there is no reason written down, so there is nothing to find, and
    asking would only produce a plausible invention.
@@ -118,13 +123,19 @@ that it gets commits and nothing else.
 ## Development
 
 ```
-npm test          # 49 tests, no network and no model needed
+npm test          # 53 tests, no network and no model needed
 npm run typecheck
 npm run eval      # needs Ollama; builds repositories with known stories and scores the model
 ```
 
 The tests build real git repositories commit by commit — including reverts, renames, misleading
 commit messages and shallow clones — because every claim whyline makes comes from a real git command.
+
+The scoring above was calibrated against a real repository rather than against fixtures. Run on
+`sindresorhus/p-limit`, an earlier version claimed "5 of 7 commit messages explain a reason" for a
+history made of `init`, `Improve performance (#47)` and `Improve performance (#83)`. None of those
+explains anything. It now reports that history as partly explained, and says that the commits point
+at issues it cannot read.
 
 The eval is the interesting one: it builds eight histories whose story is known in advance, including
 two where the reason is deliberately *not* written down, and scores the model on whether it refuses
