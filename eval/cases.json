@@ -1,0 +1,88 @@
+{
+  "comment": "Each case builds a small repository with a known story, then checks what the model makes of it. The stories are the ones that matter: a plain reason, a revert, a reapplied change, and histories where the reason is simply not written down.",
+  "cases": [
+    {
+      "name": "plain reason in the message",
+      "commits": [
+        { "file": "a.ts", "body": "export const TIMEOUT = 1000;\n", "message": "Add a request timeout" },
+        { "file": "a.ts", "body": "export const TIMEOUT = 30000;\n", "message": "Raise the timeout to 30s because clients on mobile networks were being cut off mid-upload" }
+      ],
+      "line": 1,
+      "expect": "answerable",
+      "mustMention": ["mobile", "cut off", "30"]
+    },
+    {
+      "name": "revert with the reason in the revert",
+      "commits": [
+        { "file": "a.ts", "body": "const res = await fetch(URL);\n", "message": "Fetch the token" },
+        { "file": "a.ts", "body": "const res = await fetchWithRetry(URL);\n", "message": "Retry failed token fetches" },
+        { "file": "a.ts", "body": "const res = await fetch(URL);\n", "message": "Revert \"Retry failed token fetches\"\n\nThe retry had no limit, so when the endpoint was down it looped forever and pinned a CPU." }
+      ],
+      "line": 1,
+      "expect": "answerable",
+      "mustMention": ["loop", "forever", "retry"]
+    },
+    {
+      "name": "undone and then put back",
+      "commits": [
+        { "file": "a.ts", "body": "return parse(input);\n", "message": "Parse the input" },
+        { "file": "a.ts", "body": "return parse(input.trim());\n", "message": "Trim the input before parsing, because trailing newlines from the CLI broke the parser" },
+        { "file": "a.ts", "body": "return parse(input);\n", "message": "Simplify: the trim should not be needed" },
+        { "file": "a.ts", "body": "return parse(input.trim());\n", "message": "Put the trim back, the CLI really does send a trailing newline" }
+      ],
+      "line": 1,
+      "expect": "answerable",
+      "mustMention": ["trim", "newline"]
+    },
+    {
+      "name": "the reason is only in an issue",
+      "commits": [
+        { "file": "a.ts", "body": "const workers = 4;\n", "message": "Add a worker pool" },
+        { "file": "a.ts", "body": "const workers = 1;\n", "message": "Drop to a single worker. See #431." }
+      ],
+      "line": 1,
+      "expect": "either",
+      "mustMention": []
+    },
+    {
+      "name": "nothing is written down",
+      "commits": [
+        { "file": "a.ts", "body": "const retries = 3;\n", "message": "wip" },
+        { "file": "a.ts", "body": "const retries = 7;\n", "message": "fix" },
+        { "file": "a.ts", "body": "const retries = 5;\n", "message": "update" }
+      ],
+      "line": 1,
+      "expect": "refused",
+      "mustMention": []
+    },
+    {
+      "name": "a message that only says what changed",
+      "commits": [
+        { "file": "a.ts", "body": "const mode = \"strict\";\n", "message": "Add a mode constant" },
+        { "file": "a.ts", "body": "const mode = \"lenient\";\n", "message": "Change the mode constant to lenient" }
+      ],
+      "line": 1,
+      "expect": "refused-or-hedged",
+      "mustMention": []
+    },
+    {
+      "name": "a workaround with the cause named",
+      "commits": [
+        { "file": "a.ts", "body": "await save(doc);\n", "message": "Save the document" },
+        { "file": "a.ts", "body": "await save(doc);\nawait sleep(50);\n", "message": "Sleep after saving as a workaround for a race in the storage driver, which reports success before the write lands. Remove when the driver is upgraded past 2.3" }
+      ],
+      "line": 2,
+      "expect": "answerable",
+      "mustMention": ["race", "driver"]
+    },
+    {
+      "name": "a line nobody has ever changed",
+      "commits": [
+        { "file": "a.ts", "body": "export const NAME = \"app\";\n", "message": "First commit of the project, setting up the package" }
+      ],
+      "line": 1,
+      "expect": "either",
+      "mustMention": []
+    }
+  ]
+}

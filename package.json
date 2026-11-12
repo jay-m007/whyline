@@ -1,0 +1,18 @@
+{
+  "name": "whyline",
+  "version": "0.1.0",
+  "description": "Ask why a line of code exists. Walks the real git history of that line, detects reverts and re-fixes, and answers citing the commits that prove it. A local Ollama model writes the answer; it cannot answer without evidence.",
+  "type": "module",
+  "bin": { "why": "src/cli.ts", "whyline": "src/cli.ts" },
+  "scripts": {
+    "test": "node --test --test-concurrency=1 --test-timeout=60000 \"test/**/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "eval": "node eval/run.ts"
+  },
+  "engines": { "node": ">=22.18" },
+  "keywords": ["git", "blame", "history", "ollama", "llm", "cli", "code-archaeology", "devtools"],
+  "author": "Jay Maurya",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/jay-m007/whyline.git" },
+  "devDependencies": { "@types/node": "^22.18.0", "typescript": "5.9.3" }
+}
